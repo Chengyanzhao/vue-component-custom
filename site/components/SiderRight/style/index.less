@@ -1,0 +1,64 @@
+.sider-right {
+  display: inline-block;
+
+  .wrapper {
+    position: relative;
+
+    .sider-content {
+      visibility: initial;
+      transform-origin: center right;
+      transition: all 0.3s ease-in-out;
+      overflow: hidden;
+
+      &.hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+
+    .sider-bar {
+      width: 16px;
+      position: absolute;
+      left: -16px;
+      cursor: pointer;
+      user-select: none;
+
+      &.top {
+        top: 0;
+      }
+
+      &.center {
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      &.bottom {
+        bottom: 0;
+      }
+
+      .sider-bar-top {
+        border-color: transparent #bd372f #bd372f transparent;
+        border-width: 8px;
+        border-style: solid;
+      }
+
+      .sider-bar-center {
+        display: -webkit-flex; // 设置居中
+        align-items: center; // 垂直居中
+        justify-content: center; // 水平居中
+        height: 50px;
+        background-color: #bd372f;
+
+        .icon {
+          line-height: 50px;
+        }
+      }
+
+      .sider-bar-bottom {
+        border-color: #bd372f #bd372f transparent transparent;
+        border-width: 8px;
+        border-style: solid;
+      }
+    }
+  }
+}

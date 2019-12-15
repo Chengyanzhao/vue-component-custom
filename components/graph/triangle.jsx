@@ -56,7 +56,7 @@ export default {
     }
     return (
       <div {...props} onClick="this.onclick">
-        {this.$slot.default}
+        {this.$slots.default}
       </div>
     )
   },

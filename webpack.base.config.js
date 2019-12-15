@@ -1,12 +1,15 @@
 const path = require('path')
 const WebpackBar = require('webpackbar')
+const Token = require('markdown-it/lib/token')
+const cheerio = require('cheerio')
+const hljs = require('highlight.js')
 const VueLoaderPlugin = require('vue-loader/lib/plugin')
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const getBabelCommonConfig = require('./tools/getBabelCommonConfig');
-const babelConfig = getBabelCommonConfig(false);
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const getBabelCommonConfig = require('./tools/getBabelCommonConfig')
+const babelConfig = getBabelCommonConfig(false)
 
-// babelConfig.plugins.push(require.resolve('@babel/plugin-syntax-dynamic-import'));
+// babelConfig.plugins.push(require.resolve('@babel/plugin-syntax-dynamic-import'))
 
 const vueLoaderOptions = {
   loaders: {
@@ -20,29 +23,174 @@ const vueLoaderOptions = {
       },
     ],
   },
-};
+}
+
+
+const fetch = (str, tag, scoped) => {
+  const $ = cheerio.load(str, {
+    decodeEntities: false,
+    xmlMode: true,
+  })
+  if (!tag) {
+    return str
+  }
+  if (tag === 'style') {
+    return scoped
+      ? $(`${tag}[scoped]`).html()
+      : $(`${tag}`)
+        .not(`${tag}[scoped]`)
+        .html()
+  }
+  return $(tag).html()
+}
+
+/**
+ * `{{ }}` => `<span>{{</span> <span>}}</span>`
+ * @param  {string} str
+ * @return {string}
+ */
+const replaceDelimiters = function (str) {
+  return str.replace(/({{|}})/g, '<span>$1</span>')
+}
+
+/**
+ * renderHighlight
+ * @param  {string} str
+ * @param  {string} lang
+ */
+
+const renderHighlight = function (str, lang) {
+  if (!(lang && hljs.getLanguage(lang))) {
+    return ''
+  }
+
+  try {
+    return replaceDelimiters(hljs.highlight(lang, str, true).value)
+  } catch (err) { }
+}
+
+const md = require('markdown-it')('default', {
+  html: true,
+  breaks: true,
+  highlight: renderHighlight,
+}).use(require('markdown-it-anchor'), {
+  level: 2,
+  slugify: string =>
+    string
+      .trim()
+      .split(' ')
+      .join('-'),
+  permalink: true,
+  // renderPermalink: (slug, opts, state, permalink) => {},
+  permalinkClass: 'anchor',
+  permalinkSymbol: '#',
+  permalinkBefore: false,
+})
+// md.renderer.rules.fence = wrap(md.renderer.rules.fence)
+const cnReg = new RegExp('<(cn)(?:[^<]|<)+</\\1>', 'g')
+const usReg = new RegExp('<(us)(?:[^<]|<)+</\\1>', 'g')
+md.core.ruler.push('update_template', function replace({ tokens }) {
+  let cn = ''
+  let us = ''
+  let template = ''
+  let script = ''
+  let style = ''
+  let scopedStyle = ''
+  let code = ''
+  let sourceCode = ''
+  tokens.forEach(token => {
+    if (token.type === 'html_block') {
+      if (token.content.match(cnReg)) {
+        cn = fetch(token.content, 'cn')
+        token.content = ''
+      }
+      if (token.content.match(usReg)) {
+        us = fetch(token.content, 'us')
+        token.content = ''
+      }
+    }
+    if (token.type === 'fence' && token.info === 'tpl' && token.markup === '```') {
+      sourceCode = token.content
+      code = '````html\n' + token.content + '````'
+      template = fetch(token.content, 'template')
+      script = fetch(token.content, 'script')
+      style = fetch(token.content, 'style')
+      scopedStyle = fetch(token.content, 'style', true)
+      token.content = ''
+      token.type = 'html_block'
+    }
+  })
+  if (template) {
+    let jsfiddle = {
+      html: template,
+      script,
+      style,
+      us,
+      cn,
+      sourceCode,
+    }
+    jsfiddle = md.utils.escapeHtml(JSON.stringify(jsfiddle))
+    const codeHtml = code ? md.render(code) : ''
+    const cnHtml = cn ? md.render(cn) : ''
+    let newContent = `
+      <template>
+        <demo-box :jsfiddle="${jsfiddle}">
+          <template slot="component">${template}</template>
+          <template slot="description">${cnHtml}</template>
+          <template slot="us-description">${us ? md.render(us) : ''}</template>
+          <template slot="code">${codeHtml}</template>
+        </demo-box>
+      </template>`
+    newContent += script
+      ? `
+      <script>
+      ${script || ''}
+      </script>
+      `
+      : ''
+    newContent += style ? `<style>${style || ''}</style>` : ''
+    newContent += scopedStyle ? `<style scoped>${scopedStyle || ''}</style>` : ''
+    const t = new Token('html_block', '', 0)
+    t.content = newContent
+    tokens.push(t)
+  }
+})
 
 module.exports = {
-  entry: './site/main.js',
-  output: {
-    path: path.resolve(__dirname, '_site'),
-    filename: '[name].[contenthash:8].js',
-    chunkFilename: 'chunk.[contenthash:8].js'
+  mode: 'production',
+  entry: {
+    index: [`./site/${process.env.ENTRY_INDEX || 'main'}.js`],
   },
   module: {
     rules: [
       {
+        test: /\.md$/,
+        use: [
+          {
+            loader: 'vue-loader',
+            options: vueLoaderOptions,
+          },
+          {
+            loader: 'vue-antd-md-loader',
+            options: Object.assign(md, {
+              wrapper: 'div',
+              raw: true,
+            }),
+          },
+        ],
+      },
+      {
         test: /\.vue$/,
-        loader: 'vue-loader',
-        options: vueLoaderOptions,
+        use: [{
+          loader: 'vue-loader',
+          options: vueLoaderOptions,
+        }]
       },
       {
         test: /\.(js|jsx)$/,
+        loader: 'babel-loader',
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-          options: babelConfig,
-        }
+        options: babelConfig,
       },
       {
         test: /\.(png|jpg|gif|svg)$/,
@@ -54,16 +202,16 @@ module.exports = {
     ],
   },
   resolve: {
+    modules: ['node_modules', path.join(__dirname, '../node_modules')],
     extensions: ['.js', '.jsx', '.vue', '.md'],
     alias: {
       vue$: 'vue/dist/vue.esm.js',
-      // antd: path.join(__dirname, 'components'),
+      com: path.join(__dirname, 'components'),
       // 'ant-design-vue': path.join(__dirname, 'components'),
-      '@': path.join(__dirname, './site'),
+      // 'ant-design-vue/es': path.join(__dirname, 'components'),
+      // 'ant-design-vue/lib': path.join(__dirname, 'components'),
+      '@': path.join(__dirname, ''),
     },
   },
-  plugins: [
-    new VueLoaderPlugin(),
-    new WebpackBar(),
-  ]
+  plugins: [new VueLoaderPlugin(), new WebpackBar()],
 }

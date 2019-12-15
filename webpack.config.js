@@ -1,14 +1,13 @@
-const path = require('path');
-const webpack = require('webpack');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const merge = require('webpack-merge');
-const baseWebpackConfig = require('./webpack.base.config');
+const path = require('path')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const merge = require('webpack-merge')
+const baseWebpackConfig = require('./webpack.base.config')
 
 module.exports = merge(baseWebpackConfig, {
   mode: 'development',
   output: {
-    path: path.resolve(__dirname, './_site'),
-    publicPath: process.env.BASE_URL,
+    path: path.resolve(__dirname, './dist'),
+    publicPath: '/',
     filename: 'build.js',
   },
   module: {
@@ -44,15 +43,10 @@ module.exports = merge(baseWebpackConfig, {
   },
   devtool: '#source-map',
   plugins: [
-    new webpack.DefinePlugin({
-      'process.env': {
-        BASE_URL: '"/"',
-      }
-    }),
     new HtmlWebpackPlugin({
       template: 'site/index.html',
       filename: 'index.html',
       inject: true,
     }),
   ],
-});
+})

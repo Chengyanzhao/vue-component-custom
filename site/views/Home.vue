@@ -14,7 +14,7 @@
 <script>
 // @ is an alias to /src
 // import HelloWorld from '@/components/HelloWorld.vue'
-import SiderRight from '../components/SiderRight'
+import SiderRight from 'com/SiderRight'
 // import '../components/SiderRight/style'
 
 export default {

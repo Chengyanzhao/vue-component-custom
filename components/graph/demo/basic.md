@@ -27,7 +27,7 @@ Set different shapes and colors.
       <c-triangle :size="20" />
     </div>
      <div class="col">
-      <c-triangle :size="{right:30, bottom:60, left: 10 }" />
+      <c-triangle color="#67C23A" :size="{right:30, bottom:60, left: 10 }" />
     </div>
   </div>
 </template>

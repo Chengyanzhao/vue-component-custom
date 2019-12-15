@@ -1,4 +1,4 @@
-const direction_types = ['top', 'right', 'bottom', 'bottom']
+const direction_types = ['top', 'right', 'bottom', 'left']
 
 export default {
   name: 'CTriangle',
@@ -11,10 +11,10 @@ export default {
       }
     },
     size: {
-      type: Number,
+      type: [Number, Object],
       default: 50,
     },
-    bgColor: {
+    color: {
       type: String,
     }
   },
@@ -26,8 +26,12 @@ export default {
   render() {
     const prefixCls = 'c-triangle'
     const style = { borderWidth: `${this.size}px` }
-    if (this.bgColor) {
-      style.backgroundColor = this.bgColor
+    if (this.color) {
+      const topColor = this.direction === 'bottom' ? this.color : 'transparent'
+      const rightColor = this.direction === 'left' ? this.color : 'transparent'
+      const bottomColor = this.direction === 'top' ? this.color : 'transparent'
+      const leftColor = this.direction === 'right' ? this.color : 'transparent'
+      style.borderColor = `${topColor} ${rightColor} ${bottomColor} ${leftColor}`
     }
     if (this.size) {
       let borderWidth = {
